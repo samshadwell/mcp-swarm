@@ -22,8 +22,9 @@ RUN uv tool install mcp-proxy==${MCP_PROXY_VERSION}
 
 # Upstream is a bit more suspect here, so pin a specific commit
 RUN mkdir /app
-RUN curl -L https://github.com/Taxuspt/garmin_mcp/archive/${GARMIN_MCP_COMMIT_SHA}.tar.gz | \
-    tar -xz -C /app && \
+ADD --checksum=sha256:46fe83d307750dbb39f371adf4ed39fda71ec8fd0f944ea72da00427d3d1f7d1 \
+    https://github.com/Taxuspt/garmin_mcp/archive/${GARMIN_MCP_COMMIT_SHA}.tar.gz /tmp/
+RUN tar -C /app -xzf /tmp/${GARMIN_MCP_COMMIT_SHA}.tar.gz && \
     mv /app/garmin_mcp-${GARMIN_MCP_COMMIT_SHA} /app/garmin_mcp
 
 WORKDIR /app/garmin_mcp
@@ -33,4 +34,4 @@ RUN uv sync --locked --no-dev
 ENV PORT=8080
 CMD ["sh", "-c", "exec uvx mcp-proxy --allow-origin=* --pass-environment --port=$PORT --host=0.0.0.0 uv run garmin-mcp"]
 
-# TODO: Use s6 for process msnagement
+# TODO: Use s6 for process management
