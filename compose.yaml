@@ -4,27 +4,19 @@ services:
       context: .
       dockerfile: garmin.Dockerfile
     environment:
-      PORT: 1234
+      PORT: "1234"
     env_file:
-      - ".garmin.env"
+      - "garmin.env"
   oauth2-proxy:
-    container_name: oauth2-proxy
-    depends_on:
-      - garmin-mcp
-    image: quay.io/oauth2-proxy/oauth2-proxy:v7.12.0
-    volumes:
-      - ./authed-emails.txt:/authed-emails.txt:ro
+    build:
+      context: .
+      dockerfile: oauth2-proxy.Dockerfile
     ports:
       - "8080:8080"
     environment:
-      OAUTH2_PROXY_PROVIDER: "google"
-      OAUTH2_PROXY_SCOPE: "email"
-      OAUTH2_PROXY_HTTP_ADDRESS: "0.0.0.0:8080"
-      OAUTH2_PROXY_UPSTREAMS: "http://garmin-mcp:1234/"
-      OAUTH2_PROXY_REDIRECT_URL: "http://localhost:8080/oauth2/callback"
+      HOST_DOMAIN: "http://localhost:8080"
+      PORT: "8080"
       OAUTH2_PROXY_COOKIE_SECURE: "false"
-      OAUTH2_PROXY_REVERSE_PROXY: "false"
-      OAUTH2_PROXY_SKIP_PROVIDER_BUTTON: "true"
-      OAUTH2_PROXY_AUTHENTICATED_EMAILS_FILE: /authed-emails.txt
+      OAUTH2_PROXY_UPSTREAMS: "http://garmin-mcp:1234"
     env_file:
-      - ".oauth2-proxy.env"
+      - "oauth2-proxy.env"
