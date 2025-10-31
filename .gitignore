@@ -1,1 +1,3 @@
-.local.env
+.garmin.env
+.oauth2-proxy.env
+authed-emails.txt

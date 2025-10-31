@@ -33,5 +33,3 @@ RUN uv sync --locked --no-dev
 
 ENV PORT=8080
 CMD ["sh", "-c", "exec uvx mcp-proxy --allow-origin=* --pass-environment --port=$PORT --host=0.0.0.0 uv run garmin-mcp"]
-
-# TODO: Use s6 for process management
