@@ -2,12 +2,10 @@
 ARG ASTRAL_VERSION=0.9.5
 ARG GARMIN_MCP_COMMIT_SHA=f2fc5d4180c3d27da3930c90a9e7398db53ce114
 ARG MCP_PROXY_VERSION=0.10.0
-ARG OAUTH_PROXY_VERSION=7.12.0
 ARG PYTHON_IMAGE_VERSION=3.13-trixie
 
-# Yoink some binaries from the uv and oauth2-proxy base images
+# Yoink some binaries from the uv base image
 FROM ghcr.io/astral-sh/uv:${ASTRAL_VERSION} AS uv
-FROM quay.io/oauth2-proxy/oauth2-proxy:v${OAUTH_PROXY_VERSION} AS oauth2-proxy
 
 # Main container begin
 FROM python:${PYTHON_IMAGE_VERSION}
@@ -15,7 +13,6 @@ ARG GARMIN_MCP_COMMIT_SHA
 ARG MCP_PROXY_VERSION
 
 COPY --from=uv /uv /uvx /bin/
-COPY --from=oauth2-proxy /bin/oauth2-proxy /bin/
 
 # Install https://github.com/sparfenyuk/mcp-proxy
 RUN uv tool install mcp-proxy==${MCP_PROXY_VERSION}
