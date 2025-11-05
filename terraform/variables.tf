@@ -13,19 +13,11 @@ variable "oauth2-client-id" {
   description = "Google OAuth 2.0 Client ID (managed outside Terraform)"
 }
 
-variable "garmin-image-name" {
+variable "garmin-image" {
   type = string
 }
 
-variable "garmin-image-tag" {
-  type = string
-}
-
-variable "oauth2-image-name" {
-  type = string
-}
-
-variable "oauth2-image-tag" {
+variable "oauth2-image" {
   type = string
 }
 

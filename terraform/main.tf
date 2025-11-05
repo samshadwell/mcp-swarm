@@ -24,29 +24,6 @@ data "google_secret_manager_secret" "oauth2-cookie-secret" {
   project   = data.google_project.project.project_id
 }
 
-resource "google_artifact_registry_repository" "mcp-swarm-images" {
-  repository_id          = "mcp-swarm-images"
-  description            = "Docker images for MCP Swarm"
-  format                 = "DOCKER"
-  cleanup_policy_dry_run = false
-
-  cleanup_policies {
-    id     = "delete-old"
-    action = "DELETE"
-    condition {
-      tag_state  = "ANY"
-      older_than = "30d"
-    }
-  }
-  cleanup_policies {
-    id     = "keep-latest"
-    action = "KEEP"
-    most_recent_versions {
-      keep_count = 2
-    }
-  }
-}
-
 resource "google_cloud_run_v2_service" "mcp-swarm-service" {
   name                = "mcp-swarm-service"
   location            = var.region
@@ -63,7 +40,7 @@ resource "google_cloud_run_v2_service" "mcp-swarm-service" {
     # No ports block = not the ingress container, only accessible via localhost
     containers {
       name  = "garmin-mcp"
-      image = "${google_artifact_registry_repository.mcp-swarm-images.registry_uri}/${var.garmin-image-name}:${var.garmin-image-tag}"
+      image = "${var.garmin-image}"
 
       env {
         name  = "PORT"
@@ -117,7 +94,7 @@ resource "google_cloud_run_v2_service" "mcp-swarm-service" {
     # Only this container has a port exposed, making it the ingress container
     containers {
       name  = "oauth2-proxy"
-      image = "${google_artifact_registry_repository.mcp-swarm-images.registry_uri}/${var.oauth2-image-name}:${var.oauth2-image-tag}"
+      image = "${var.oauth2-image}"
 
       # Exposing a port marks this as the ingress container
       ports {
