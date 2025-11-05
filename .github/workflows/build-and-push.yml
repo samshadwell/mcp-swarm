@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - docker-in-ci
   pull_request:
     branches:
       - main
@@ -42,7 +41,7 @@ jobs:
           tags: |
             type=ref,event=branch
             type=ref,event=pr
-            type=sha,prefix={{branch}}-
+            type=sha
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push garmin Docker image
@@ -84,7 +83,7 @@ jobs:
           tags: |
             type=ref,event=branch
             type=ref,event=pr
-            type=sha,prefix={{branch}}-
+            type=sha
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push oauth2-proxy Docker image
