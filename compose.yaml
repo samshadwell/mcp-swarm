@@ -20,7 +20,7 @@ services:
     environment:
       PORT: "8080"
       OAUTH2_PROXY_AUTHENTICATED_EMAILS_FILE: "/run/secrets/oauth2-authenticated-emails"
-      OAUTH2_PROXY_CLIENT_ID: "YOUR_OAUTH2_CLIENT_ID.apps.googleusercontent.com"
+      OAUTH2_PROXY_CLIENT_ID: ${OAUTH2_PROXY_CLIENT_ID}
       OAUTH2_PROXY_CLIENT_SECRET_FILE: "/run/secrets/oauth2-client-secret"
       OAUTH2_PROXY_COOKIE_SECRET_FILE: "/run/secrets/oauth2-cookie-secret"
       OAUTH2_PROXY_COOKIE_SECURE: "false"
@@ -30,6 +30,9 @@ services:
       - oauth2-authenticated-emails
       - oauth2-client-secret
       - oauth2-cookie-secret
+    depends_on:
+      garmin-mcp:
+        condition: service_healthy
 
 secrets:
   garmin-email:

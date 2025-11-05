@@ -14,4 +14,5 @@ ENV OAUTH2_PROXY_PROVIDER="google"
 ENV OAUTH2_PROXY_SCOPE="email"
 ENV OAUTH2_PROXY_SKIP_PROVIDER_BUTTON="true"
 
+HEALTHCHECK --interval=10s --timeout=2s --start-period=5s --retries=3 CMD [ "sh", "-c", "curl -f http://localhost:$PORT/ready" ]
 ENTRYPOINT [ "/app/oauth2-proxy.run.sh" ]
