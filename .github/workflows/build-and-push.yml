@@ -14,6 +14,7 @@ env:
 
 jobs:
   build-garmin:
+    name: Build and Push garmin.Dockerfile
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -56,6 +57,7 @@ jobs:
           cache-to: type=gha,mode=max
 
   build-oauth2-proxy:
+    name: Build and Push oauth2-proxy.Dockerfile
     runs-on: ubuntu-latest
     permissions:
       contents: read
