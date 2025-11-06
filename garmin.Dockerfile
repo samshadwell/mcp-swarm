@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.19.0
 ARG ASTRAL_VERSION=0.9.5
-ARG GARMIN_MCP_COMMIT_SHA=f2fc5d4180c3d27da3930c90a9e7398db53ce114
+ARG GARMIN_MCP_COMMIT_SHA=80e22950fc6b7d1d2e15611e4ed1fbb789ecb3fb
 ARG MCP_PROXY_VERSION=0.10.0
 ARG PYTHON_IMAGE_VERSION=3.13-slim-trixie
 
@@ -18,9 +18,8 @@ RUN uv tool install mcp-proxy==${MCP_PROXY_VERSION}
 
 # Upstream is a bit more suspect here, so pin a specific commit
 RUN mkdir /app
-# TODO: Switch this back to upstream once PR is merged: https://github.com/Taxuspt/garmin_mcp/pull/11
-ADD --checksum=sha256:d95082ed3947a470596b95caf94607e2bef69064ad7a6f46f125da51cdcd2159 \
-    https://github.com/samshadwell/garmin_mcp/archive/${GARMIN_MCP_COMMIT_SHA}.tar.gz /tmp/
+ADD --checksum=sha256:3ce1a7b9152cb6056f027239eb2ea3fdaf6fa594645634cf7dcfbf43c94aad82 \
+    https://github.com/Taxuspt/garmin_mcp/archive/${GARMIN_MCP_COMMIT_SHA}.tar.gz /tmp/
 RUN tar -C /app -xzf /tmp/${GARMIN_MCP_COMMIT_SHA}.tar.gz && \
     rm /tmp/${GARMIN_MCP_COMMIT_SHA}.tar.gz && \
     mv /app/garmin_mcp-${GARMIN_MCP_COMMIT_SHA} /app/garmin_mcp
