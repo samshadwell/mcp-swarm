@@ -10,11 +10,11 @@ resource "google_service_account" "mcp_swarm_service_account" {
 }
 
 resource "google_artifact_registry_repository" "ghcr-remote-repo" {
-  location = var.region
+  location      = var.region
   repository_id = "ghcr-remote-repo"
-  description = "Pull-through cache for GitHub Container Registry (ghcr.io)"
-  format = "DOCKER"
-  mode = "REMOTE_REPOSITORY"
+  description   = "Pull-through cache for GitHub Container Registry (ghcr.io)"
+  format        = "DOCKER"
+  mode          = "REMOTE_REPOSITORY"
   remote_repository_config {
     common_repository {
       uri = "https://ghcr.io"
@@ -65,6 +65,13 @@ resource "google_cloud_run_v2_service" "mcp-swarm-service" {
     containers {
       name  = "garmin-mcp"
       image = "${google_artifact_registry_repository.ghcr-remote-repo.registry_uri}/${var.garmin-image}"
+      resources {
+        limits = {
+          cpu = "1"
+        }
+        startup_cpu_boost = true
+        cpu_idle          = true
+      }
 
       env {
         name  = "PORT"
@@ -99,7 +106,7 @@ resource "google_cloud_run_v2_service" "mcp-swarm-service" {
         initial_delay_seconds = 0
         timeout_seconds       = 1
         period_seconds        = 1
-        failure_threshold     = 10
+        failure_threshold     = 20
       }
 
       liveness_probe {
@@ -136,13 +143,28 @@ resource "google_cloud_run_v2_service" "mcp-swarm-service" {
       }
 
       env {
+        name  = "OAUTH2_PROXY_COOKIE_DOMAIN"
+        value = var.host-domain
+      }
+
+      env {
+        name  = "OAUTH2_PROXY_WHITELIST_DOMAIN"
+        value = var.host-domain
+      }
+
+      env {
+        name  = "OAUTH2_PROXY_CODE_CHALLENGE_METHOD"
+        value = "S256"
+      }
+
+      env {
         name  = "OAUTH2_PROXY_REDIRECT_URL"
         value = "https://${var.host-domain}/oauth2/callback"
       }
 
       env {
         name  = "OAUTH2_PROXY_UPSTREAMS"
-        value = "http://127.0.0.1:8081"
+        value = "http://127.0.0.1:1234"
       }
 
       env {
@@ -289,4 +311,12 @@ resource "google_secret_manager_secret_iam_member" "oauth2-cookie-secret-access"
   secret_id = data.google_secret_manager_secret.oauth2-cookie-secret.secret_id
   role      = "roles/secretmanager.secretAccessor"
   member    = "serviceAccount:${google_service_account.mcp_swarm_service_account.email}"
+}
+
+# Allow public (unauthenticated) access to the Cloud Run service
+resource "google_cloud_run_v2_service_iam_member" "public-access" {
+  name     = google_cloud_run_v2_service.mcp-swarm-service.name
+  location = google_cloud_run_v2_service.mcp-swarm-service.location
+  role     = "roles/run.invoker"
+  member   = "allUsers"
 }
