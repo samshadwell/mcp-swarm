@@ -27,16 +27,14 @@ RUN tar -C /app -xzf /tmp/${GARMIN_MCP_COMMIT_SHA}.tar.gz && \
 
 WORKDIR /app/garmin_mcp
 ENV UV_COMPILE_BYTECODE=1
-RUN uv sync --locked --no-dev
+RUN uv sync --locked --no-dev --no-editable
 
 # Runtime stage
 FROM python:${PYTHON_IMAGE_VERSION}
 
-COPY --from=uv /uv /uvx /bin/
-
 # Copy installed tools and app from builder
 COPY --from=builder /root/.local /root/.local
-COPY --from=builder /app/garmin_mcp /app/garmin_mcp
+COPY --from=builder /app/garmin_mcp/.venv /app/garmin_mcp/.venv
 
 WORKDIR /app/garmin_mcp
 
@@ -46,4 +44,4 @@ ENV PATH="/root/.local/bin:$PATH"
 HEALTHCHECK --interval=10s --timeout=2s --start-period=15s --start-interval=1s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:$PORT/status').read()"
 
-CMD ["sh", "-c", "exec uvx mcp-proxy --allow-origin=* --pass-environment --port=$PORT --host=0.0.0.0 uv run garmin-mcp"]
+CMD ["sh", "-c", "exec mcp-proxy --allow-origin=* --pass-environment --port=$PORT --host=0.0.0.0 /app/garmin_mcp/.venv/bin/garmin-mcp"]
