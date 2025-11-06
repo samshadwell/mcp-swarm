@@ -9,6 +9,10 @@ resource "google_service_account" "mcp_swarm_service_account" {
   description  = "Service account for the mcp-swarm Cloud Run service"
 }
 
+locals {
+  garmin_port = 1234
+}
+
 resource "google_artifact_registry_repository" "ghcr-remote-repo" {
   location      = var.region
   repository_id = "ghcr-remote-repo"
@@ -21,7 +25,21 @@ resource "google_artifact_registry_repository" "ghcr-remote-repo" {
     }
   }
 
-  # TODO: Cleanup policy to minimize costs. This is a cache, so don't need to keep much there
+  # Cleanup policy to minimize costs. This is a cache, so don't need to keep much there
+  cleanup_policies {
+    id     = "delete-old-images"
+    action = "DELETE"
+    condition {
+      older_than = "7d"
+    }
+  }
+  cleanup_policies {
+    id     = "keep-latest"
+    action = "KEEP"
+    most_recent_versions {
+      keep_count = 2
+    }
+  }
 }
 
 # Reference secrets. Created/populated by bootstrap-secrets.sh
@@ -68,6 +86,7 @@ resource "google_cloud_run_v2_service" "mcp-swarm-service" {
       resources {
         limits = {
           cpu = "1"
+          memory = "512Mi"
         }
         startup_cpu_boost = true
         cpu_idle          = true
@@ -75,7 +94,7 @@ resource "google_cloud_run_v2_service" "mcp-swarm-service" {
 
       env {
         name  = "PORT"
-        value = "1234"
+        value = tostring(local.garmin_port)
       }
 
       env {
@@ -101,7 +120,7 @@ resource "google_cloud_run_v2_service" "mcp-swarm-service" {
       startup_probe {
         http_get {
           path = "/status"
-          port = 1234
+          port = local.garmin_port
         }
         initial_delay_seconds = 0
         timeout_seconds       = 1
@@ -112,10 +131,10 @@ resource "google_cloud_run_v2_service" "mcp-swarm-service" {
       liveness_probe {
         http_get {
           path = "/status"
-          port = 1234
+          port = local.garmin_port
         }
         initial_delay_seconds = 0
-        timeout_seconds       = 1
+        timeout_seconds       = 3
         period_seconds        = 10
         failure_threshold     = 3
       }
@@ -130,6 +149,15 @@ resource "google_cloud_run_v2_service" "mcp-swarm-service" {
       # Exposing a port marks this as the ingress container
       ports {
         container_port = 8080
+      }
+
+      resources {
+        limits = {
+          cpu = "1"
+          memory = "512Mi"
+        }
+        startup_cpu_boost = false
+        cpu_idle          = true
       }
 
       env {
@@ -164,7 +192,7 @@ resource "google_cloud_run_v2_service" "mcp-swarm-service" {
 
       env {
         name  = "OAUTH2_PROXY_UPSTREAMS"
-        value = "http://127.0.0.1:1234"
+        value = "http://127.0.0.1:${local.garmin_port}"
       }
 
       env {
@@ -212,7 +240,7 @@ resource "google_cloud_run_v2_service" "mcp-swarm-service" {
           path = "/ping"
         }
         initial_delay_seconds = 0
-        timeout_seconds       = 1
+        timeout_seconds       = 3
         period_seconds        = 10
         failure_threshold     = 3
       }
@@ -224,7 +252,6 @@ resource "google_cloud_run_v2_service" "mcp-swarm-service" {
       name = "garmin-email"
       secret {
         secret       = data.google_secret_manager_secret.garmin-email.secret_id
-        default_mode = 0444
         items {
           version = "latest"
           path    = "garmin-email"
@@ -236,7 +263,6 @@ resource "google_cloud_run_v2_service" "mcp-swarm-service" {
       name = "garmin-pw"
       secret {
         secret       = data.google_secret_manager_secret.garmin-pw.secret_id
-        default_mode = 0444
         items {
           version = "latest"
           path    = "garmin-pw"
@@ -248,7 +274,6 @@ resource "google_cloud_run_v2_service" "mcp-swarm-service" {
       name = "oauth2-authenticated-emails"
       secret {
         secret       = data.google_secret_manager_secret.oauth2-authenticated-emails.secret_id
-        default_mode = 0444
         items {
           version = "latest"
           path    = "oauth2-authenticated-emails"
@@ -260,7 +285,6 @@ resource "google_cloud_run_v2_service" "mcp-swarm-service" {
       name = "oauth2-client-secret"
       secret {
         secret       = data.google_secret_manager_secret.oauth2-client-secret.secret_id
-        default_mode = 0444
         items {
           version = "latest"
           path    = "oauth2-client-secret"
@@ -272,7 +296,6 @@ resource "google_cloud_run_v2_service" "mcp-swarm-service" {
       name = "oauth2-cookie-secret"
       secret {
         secret       = data.google_secret_manager_secret.oauth2-cookie-secret.secret_id
-        default_mode = 0444
         items {
           version = "latest"
           path    = "oauth2-cookie-secret"
