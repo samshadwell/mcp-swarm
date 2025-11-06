@@ -1,3 +1,3 @@
 output "public-uri" {
-  value = google_cloud_run_v2_service.mcp-swarm-service.uri
+  value = google_cloud_run_v2_service.mcp_swarm_service.uri
 }

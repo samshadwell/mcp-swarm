@@ -8,19 +8,19 @@ variable "region" {
   description = "Google Cloud region"
 }
 
-variable "oauth2-client-id" {
+variable "oauth2_client_id" {
   type        = string
   description = "Google OAuth 2.0 Client ID (managed outside Terraform)"
 }
 
-variable "garmin-image" {
+variable "garmin_image" {
   type = string
 }
 
-variable "oauth2-image" {
+variable "oauth2_image" {
   type = string
 }
 
-variable "host-domain" {
+variable "host_domain" {
   type = string
 }

@@ -13,7 +13,7 @@ locals {
   garmin_port = 1234
 }
 
-resource "google_artifact_registry_repository" "ghcr-remote-repo" {
+resource "google_artifact_registry_repository" "ghcr_remote_repo" {
   location      = var.region
   repository_id = "ghcr-remote-repo"
   description   = "Pull-through cache for GitHub Container Registry (ghcr.io)"
@@ -43,32 +43,33 @@ resource "google_artifact_registry_repository" "ghcr-remote-repo" {
 }
 
 # Reference secrets. Created/populated by bootstrap-secrets.sh
-data "google_secret_manager_secret" "garmin-email" {
+data "google_secret_manager_secret" "garmin_email" {
   secret_id = "garmin-email"
   project   = data.google_project.project.project_id
 }
-data "google_secret_manager_secret" "garmin-pw" {
+data "google_secret_manager_secret" "garmin_pw" {
   secret_id = "garmin-pw"
   project   = data.google_project.project.project_id
 }
-data "google_secret_manager_secret" "oauth2-authenticated-emails" {
+data "google_secret_manager_secret" "oauth2_authenticated_emails" {
   secret_id = "oauth2-authenticated-emails"
   project   = data.google_project.project.project_id
 }
-data "google_secret_manager_secret" "oauth2-client-secret" {
+data "google_secret_manager_secret" "oauth2_client_secret" {
   secret_id = "oauth2-client-secret"
   project   = data.google_project.project.project_id
 }
-data "google_secret_manager_secret" "oauth2-cookie-secret" {
+data "google_secret_manager_secret" "oauth2_cookie_secret" {
   secret_id = "oauth2-cookie-secret"
   project   = data.google_project.project.project_id
 }
 
-resource "google_cloud_run_v2_service" "mcp-swarm-service" {
+resource "google_cloud_run_v2_service" "mcp_swarm_service" {
   name                = "mcp-swarm-service"
   location            = var.region
   deletion_protection = false
-  ingress             = "INGRESS_TRAFFIC_ALL"
+  # TODO: Locked down for now. To change this to public once I'm ready
+  ingress             = "INGRESS_TRAFFIC_INTERNAL_ONLY"
 
   template {
     service_account = google_service_account.mcp_swarm_service_account.email
@@ -82,7 +83,7 @@ resource "google_cloud_run_v2_service" "mcp-swarm-service" {
     # No ports block = not the ingress container, only accessible via localhost
     containers {
       name  = "garmin-mcp"
-      image = "${google_artifact_registry_repository.ghcr-remote-repo.registry_uri}/${var.garmin-image}"
+      image = "${google_artifact_registry_repository.ghcr_remote_repo.registry_uri}/${var.garmin_image}"
       resources {
         limits = {
           cpu = "1"
@@ -144,7 +145,7 @@ resource "google_cloud_run_v2_service" "mcp-swarm-service" {
     # Only this container has a port exposed, making it the ingress container
     containers {
       name  = "oauth2-proxy"
-      image = "${google_artifact_registry_repository.ghcr-remote-repo.registry_uri}/${var.oauth2-image}"
+      image = "${google_artifact_registry_repository.ghcr_remote_repo.registry_uri}/${var.oauth2_image}"
 
       # Exposing a port marks this as the ingress container
       ports {
@@ -162,7 +163,7 @@ resource "google_cloud_run_v2_service" "mcp-swarm-service" {
 
       env {
         name  = "OAUTH2_PROXY_CLIENT_ID"
-        value = var.oauth2-client-id
+        value = var.oauth2_client_id
       }
 
       env {
@@ -172,12 +173,12 @@ resource "google_cloud_run_v2_service" "mcp-swarm-service" {
 
       env {
         name  = "OAUTH2_PROXY_COOKIE_DOMAIN"
-        value = var.host-domain
+        value = var.host_domain
       }
 
       env {
         name  = "OAUTH2_PROXY_WHITELIST_DOMAIN"
-        value = var.host-domain
+        value = var.host_domain
       }
 
       env {
@@ -187,7 +188,7 @@ resource "google_cloud_run_v2_service" "mcp-swarm-service" {
 
       env {
         name  = "OAUTH2_PROXY_REDIRECT_URL"
-        value = "https://${var.host-domain}/oauth2/callback"
+        value = "https://${var.host_domain}/oauth2/callback"
       }
 
       env {
@@ -251,7 +252,7 @@ resource "google_cloud_run_v2_service" "mcp-swarm-service" {
     volumes {
       name = "garmin-email"
       secret {
-        secret       = data.google_secret_manager_secret.garmin-email.secret_id
+        secret       = data.google_secret_manager_secret.garmin_email.secret_id
         items {
           version = "latest"
           path    = "garmin-email"
@@ -262,7 +263,7 @@ resource "google_cloud_run_v2_service" "mcp-swarm-service" {
     volumes {
       name = "garmin-pw"
       secret {
-        secret       = data.google_secret_manager_secret.garmin-pw.secret_id
+        secret       = data.google_secret_manager_secret.garmin_pw.secret_id
         items {
           version = "latest"
           path    = "garmin-pw"
@@ -273,7 +274,7 @@ resource "google_cloud_run_v2_service" "mcp-swarm-service" {
     volumes {
       name = "oauth2-authenticated-emails"
       secret {
-        secret       = data.google_secret_manager_secret.oauth2-authenticated-emails.secret_id
+        secret       = data.google_secret_manager_secret.oauth2_authenticated_emails.secret_id
         items {
           version = "latest"
           path    = "oauth2-authenticated-emails"
@@ -284,7 +285,7 @@ resource "google_cloud_run_v2_service" "mcp-swarm-service" {
     volumes {
       name = "oauth2-client-secret"
       secret {
-        secret       = data.google_secret_manager_secret.oauth2-client-secret.secret_id
+        secret       = data.google_secret_manager_secret.oauth2_client_secret.secret_id
         items {
           version = "latest"
           path    = "oauth2-client-secret"
@@ -295,7 +296,7 @@ resource "google_cloud_run_v2_service" "mcp-swarm-service" {
     volumes {
       name = "oauth2-cookie-secret"
       secret {
-        secret       = data.google_secret_manager_secret.oauth2-cookie-secret.secret_id
+        secret       = data.google_secret_manager_secret.oauth2_cookie_secret.secret_id
         items {
           version = "latest"
           path    = "oauth2-cookie-secret"
@@ -306,40 +307,41 @@ resource "google_cloud_run_v2_service" "mcp-swarm-service" {
 }
 
 # IAM permissions for mcp-swarm-service to access secrets
-resource "google_secret_manager_secret_iam_member" "garmin-email-access" {
-  secret_id = data.google_secret_manager_secret.garmin-email.secret_id
+resource "google_secret_manager_secret_iam_member" "garmin_email_access" {
+  secret_id = data.google_secret_manager_secret.garmin_email.secret_id
   role      = "roles/secretmanager.secretAccessor"
   member    = "serviceAccount:${google_service_account.mcp_swarm_service_account.email}"
 }
 
-resource "google_secret_manager_secret_iam_member" "garmin-pw-access" {
-  secret_id = data.google_secret_manager_secret.garmin-pw.secret_id
+resource "google_secret_manager_secret_iam_member" "garmin_pw_access" {
+  secret_id = data.google_secret_manager_secret.garmin_pw.secret_id
   role      = "roles/secretmanager.secretAccessor"
   member    = "serviceAccount:${google_service_account.mcp_swarm_service_account.email}"
 }
 
-resource "google_secret_manager_secret_iam_member" "oauth2-authenticated-emails-access" {
-  secret_id = data.google_secret_manager_secret.oauth2-authenticated-emails.secret_id
+resource "google_secret_manager_secret_iam_member" "oauth2_authenticated_emails_access" {
+  secret_id = data.google_secret_manager_secret.oauth2_authenticated_emails.secret_id
   role      = "roles/secretmanager.secretAccessor"
   member    = "serviceAccount:${google_service_account.mcp_swarm_service_account.email}"
 }
 
-resource "google_secret_manager_secret_iam_member" "oauth2-client-secret-access" {
-  secret_id = data.google_secret_manager_secret.oauth2-client-secret.secret_id
+resource "google_secret_manager_secret_iam_member" "oauth2_client_secret_access" {
+  secret_id = data.google_secret_manager_secret.oauth2_client_secret.secret_id
   role      = "roles/secretmanager.secretAccessor"
   member    = "serviceAccount:${google_service_account.mcp_swarm_service_account.email}"
 }
 
-resource "google_secret_manager_secret_iam_member" "oauth2-cookie-secret-access" {
-  secret_id = data.google_secret_manager_secret.oauth2-cookie-secret.secret_id
+resource "google_secret_manager_secret_iam_member" "oauth2_cookie_secret_access" {
+  secret_id = data.google_secret_manager_secret.oauth2_cookie_secret.secret_id
   role      = "roles/secretmanager.secretAccessor"
   member    = "serviceAccount:${google_service_account.mcp_swarm_service_account.email}"
 }
 
 # Allow public (unauthenticated) access to the Cloud Run service
-resource "google_cloud_run_v2_service_iam_member" "public-access" {
-  name     = google_cloud_run_v2_service.mcp-swarm-service.name
-  location = google_cloud_run_v2_service.mcp-swarm-service.location
-  role     = "roles/run.invoker"
-  member   = "allUsers"
-}
+# Will re-enable this in the future, but disabling for now while I'm getting this working.
+#resource "google_cloud_run_v2_service_iam_member" "public_access" {
+#  name     = google_cloud_run_v2_service.mcp-swarm-service.name
+#  location = google_cloud_run_v2_service.mcp-swarm-service.location
+#  role     = "roles/run.invoker"
+#  member   = "allUsers"
+#}
