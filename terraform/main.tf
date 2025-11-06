@@ -2,6 +2,28 @@ data "google_project" "project" {
   project_id = var.project
 }
 
+# Create a dedicated service account for the Cloud Run service
+resource "google_service_account" "mcp_swarm_service_account" {
+  account_id   = "mcp-swarm-service-sa"
+  display_name = "MCP Swarm Service Account"
+  description  = "Service account for the mcp-swarm Cloud Run service"
+}
+
+resource "google_artifact_registry_repository" "ghcr-remote-repo" {
+  location = var.region
+  repository_id = "ghcr-remote-repo"
+  description = "Pull-through cache for GitHub Container Registry (ghcr.io)"
+  format = "DOCKER"
+  mode = "REMOTE_REPOSITORY"
+  remote_repository_config {
+    common_repository {
+      uri = "https://ghcr.io"
+    }
+  }
+
+  # TODO: Cleanup policy to minimize costs. This is a cache, so don't need to keep much there
+}
+
 # Reference secrets. Created/populated by bootstrap-secrets.sh
 data "google_secret_manager_secret" "garmin-email" {
   secret_id = "garmin-email"
@@ -31,6 +53,8 @@ resource "google_cloud_run_v2_service" "mcp-swarm-service" {
   ingress             = "INGRESS_TRAFFIC_ALL"
 
   template {
+    service_account = google_service_account.mcp_swarm_service_account.email
+
     scaling {
       min_instance_count = 0
       max_instance_count = 1
@@ -40,7 +64,7 @@ resource "google_cloud_run_v2_service" "mcp-swarm-service" {
     # No ports block = not the ingress container, only accessible via localhost
     containers {
       name  = "garmin-mcp"
-      image = "${var.garmin-image}"
+      image = "${google_artifact_registry_repository.ghcr-remote-repo.registry_uri}/${var.garmin-image}"
 
       env {
         name  = "PORT"
@@ -49,12 +73,12 @@ resource "google_cloud_run_v2_service" "mcp-swarm-service" {
 
       env {
         name  = "GARMIN_EMAIL_FILE"
-        value = "/secrets/garmin-email"
+        value = "/secrets/garmin-email/garmin-email"
       }
 
       env {
         name  = "GARMIN_PASSWORD_FILE"
-        value = "/secrets/garmin-pw"
+        value = "/secrets/garmin-pw/garmin-pw"
       }
 
       volume_mounts {
@@ -94,7 +118,7 @@ resource "google_cloud_run_v2_service" "mcp-swarm-service" {
     # Only this container has a port exposed, making it the ingress container
     containers {
       name  = "oauth2-proxy"
-      image = "${var.oauth2-image}"
+      image = "${google_artifact_registry_repository.ghcr-remote-repo.registry_uri}/${var.oauth2-image}"
 
       # Exposing a port marks this as the ingress container
       ports {
@@ -123,17 +147,17 @@ resource "google_cloud_run_v2_service" "mcp-swarm-service" {
 
       env {
         name  = "OAUTH2_PROXY_AUTHENTICATED_EMAILS_FILE"
-        value = "/secrets/oauth2-authenticated-emails"
+        value = "/secrets/oauth2-authenticated-emails/oauth2-authenticated-emails"
       }
 
       env {
         name  = "OAUTH2_PROXY_CLIENT_SECRET_FILE"
-        value = "/secrets/oauth2-client-secret"
+        value = "/secrets/oauth2-client-secret/oauth2-client-secret"
       }
 
       env {
         name  = "OAUTH2_PROXY_COOKIE_SECRET_FILE"
-        value = "/secrets/oauth2-cookie-secret"
+        value = "/secrets/oauth2-cookie-secret/oauth2-cookie-secret"
       }
 
       volume_mounts {
@@ -240,29 +264,29 @@ resource "google_cloud_run_v2_service" "mcp-swarm-service" {
 resource "google_secret_manager_secret_iam_member" "garmin-email-access" {
   secret_id = data.google_secret_manager_secret.garmin-email.secret_id
   role      = "roles/secretmanager.secretAccessor"
-  member    = "serviceAccount:${google_cloud_run_v2_service.mcp-swarm-service.template[0].service_account}"
+  member    = "serviceAccount:${google_service_account.mcp_swarm_service_account.email}"
 }
 
 resource "google_secret_manager_secret_iam_member" "garmin-pw-access" {
   secret_id = data.google_secret_manager_secret.garmin-pw.secret_id
   role      = "roles/secretmanager.secretAccessor"
-  member    = "serviceAccount:${google_cloud_run_v2_service.mcp-swarm-service.template[0].service_account}"
+  member    = "serviceAccount:${google_service_account.mcp_swarm_service_account.email}"
 }
 
 resource "google_secret_manager_secret_iam_member" "oauth2-authenticated-emails-access" {
   secret_id = data.google_secret_manager_secret.oauth2-authenticated-emails.secret_id
   role      = "roles/secretmanager.secretAccessor"
-  member    = "serviceAccount:${google_cloud_run_v2_service.mcp-swarm-service.template[0].service_account}"
+  member    = "serviceAccount:${google_service_account.mcp_swarm_service_account.email}"
 }
 
 resource "google_secret_manager_secret_iam_member" "oauth2-client-secret-access" {
   secret_id = data.google_secret_manager_secret.oauth2-client-secret.secret_id
   role      = "roles/secretmanager.secretAccessor"
-  member    = "serviceAccount:${google_cloud_run_v2_service.mcp-swarm-service.template[0].service_account}"
+  member    = "serviceAccount:${google_service_account.mcp_swarm_service_account.email}"
 }
 
 resource "google_secret_manager_secret_iam_member" "oauth2-cookie-secret-access" {
   secret_id = data.google_secret_manager_secret.oauth2-cookie-secret.secret_id
   role      = "roles/secretmanager.secretAccessor"
-  member    = "serviceAccount:${google_cloud_run_v2_service.mcp-swarm-service.template[0].service_account}"
+  member    = "serviceAccount:${google_service_account.mcp_swarm_service_account.email}"
 }
